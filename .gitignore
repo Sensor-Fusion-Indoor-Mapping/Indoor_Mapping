@@ -1,0 +1,4 @@
+data/camera_intrinsics/*.txt
+data/color_images/*.jpg
+*.pyc
+*.pyo

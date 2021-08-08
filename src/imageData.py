@@ -2,30 +2,46 @@ import cv2
 import numpy as np
 import threading
 import re
+import matplotlib.pyplot as plt
 
 class ImageData(object):
-    def __init__(self,im_path,int_path,img_info):
-        self.name = img_info[0]+img_info[1]+img_info[2]
-        self.pose_name = img_info[0]
+    def __init__(self,im_path,int_path,dpth_path,name):
+        '''
+        Image data class holds important info for each RGB and D image pair
+        implments compute methods as threads to speed up computation
+        each class instance is hashed in the IndoorMapping class for easy lookup
+        '''
+        #bookkeeping data
+        self.name = name
         self.im_path = im_path
         self.int_path = int_path
+        self.dpth_path = dpth_path
+
+        #thread data
         self.feature_pipeline_thread = None
         self.feature_pipeline_success = False
 
-        self.distorted_image = None
-        self.undistorted_image = None
+        #image data
+        self.distorted_rgb_image = None
+        self.distorted_dpth_image = None
+        self.undistorted_rgb_image = None
+        self.undistorted_dpth_image = None
         self.im_width = None
         self.im_height = None
         self.intrinsic = None
         self.distortion_params = None
 
+        #computed data
         self.kp_cv = None
         self.des_cv = None
 
-    def open_image(self) -> bool:
+    def open_images(self) -> bool:
         success = True
-        self.distorted_image = cv2.imread(self.im_path+".jpg",cv2.IMREAD_GRAYSCALE)
-        if self.distorted_image is None:
+        self.distorted_rgb_image = cv2.imread(self.im_path,cv2.IMREAD_GRAYSCALE)
+        if self.distorted_rgb_image is None:
+            return False
+        self.distorted_dpth_image = cv2.imread(self.dpth_path)
+        if self.distorted_dpth_image is None:
             return False
         return success
 
@@ -45,26 +61,34 @@ class ImageData(object):
             [float(int_list[2]),0,float(int_list[4])],
             [0,float(int_list[3]),float(int_list[5])],
             [0,0,1]])
-        self.distortion_params = [float(int_list[6]),
+        self.distortion_params = np.array([float(int_list[6]),
                                   float(int_list[7]),
                                   float(int_list[8]),
-                                  float(int_list[9])]
+                                  float(int_list[9])])
         return success
 
-    def undistort_image(self) -> bool:
+    def undistort_images(self) -> bool:
         success = True
-        self.undistorted_image = self.distorted_image
+        self.undistorted_rgb_image = cv2.undistort(self.distorted_rgb_image,
+                                               self.intrinsic,
+                                               self.distortion_params,
+                                               None, None)
+        self.undistorted_dpth_image = cv2.undistort(self.distorted_dpth_image,
+                                               self.intrinsic,
+                                               self.distortion_params,
+                                               None, None)
         return success
 
     def run_feature_extraction(self) -> bool:
         success = True
         sift = cv2.SIFT_create()
-        self.kp_cv, self.des_cv = sift.detectAndCompute(self.undistorted_image,None)
+        self.kp_cv, self.des_cv = sift.detectAndCompute(self.undistorted_rgb_image,None)
+        #TODO improve kp with depth
         return success
 
 
     def feature_pipeline(self) -> None:
-        self.feature_pipeline_success = self.open_image()
+        self.feature_pipeline_success = self.open_images()
         if not self.feature_pipeline_success:
             print("error opening image {}".format(self.im_path))
             return
@@ -72,7 +96,7 @@ class ImageData(object):
         if not self.feature_pipeline_success:
             print("error opening intrinsics {}".format(self.int_path))
             return
-        self.feature_pipeline_success = self.undistort_image()
+        self.feature_pipeline_success = self.undistort_images()
         if not self.feature_pipeline_success:
             print("error undistorting features {}".format(self.name))
             return
@@ -96,10 +120,20 @@ class ImageData(object):
 
         if not threads:
             self.feature_pipeline_thread.join()
+            self.feature_pipeline_thread = None
             return self.feature_pipeline_success
         else:
             return True
 
     def join_feature_thread(self) -> bool:
         self.feature_pipeline_thread.join()
+        self.feature_pipeline_thread = None
         return self.feature_pipeline_success
+
+    def press(self,event):
+        print('press', event.key)
+
+    def renderImage(self) -> None:
+        fig, ax = plt.subplots()
+        fig.canvas.mpl_connect("image debugger", self.press)
+        plt.show()

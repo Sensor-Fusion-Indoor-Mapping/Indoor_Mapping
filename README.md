@@ -9,6 +9,7 @@ Prject file structure:
 |  
 └───data/  
 |    | color_images/  
+|    | depth_images/  
 |    | camera_intrinsics/  
 |  
 └───src/  

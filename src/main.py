@@ -6,7 +6,7 @@ import cv2
 import sys, getopt, os, re
 import time
 from imageData import ImageData
-
+from imageGroup import ImageGroup
 
 true = ["true","True","y","Y"]
 false = ["false","False","n","N"]
@@ -23,6 +23,7 @@ class IndoorMapping():
         self.compute_block_size = 14
         self.image_dict = {}
         self.image_list = []
+        self.hash_list = []
 
     def set_arguments(self,argv):
         try:
@@ -54,10 +55,11 @@ class IndoorMapping():
         print("computed features in {} sec (process time)".format(end-start))
 
         #TODO add more to compute pipelines here/ ie BA RANSAC methods...
+        self.compute_image_poses()
 
-        run = True
-        while run:
-            run = self.terminal_debugger()
+        #run = True
+        #while run:
+        #    run = self.terminal_debugger()
 
     def load_image_data(self):
         """
@@ -90,6 +92,7 @@ class IndoorMapping():
 
             #load into class
             #save index of name in a dict for queries
+            self.hash_list.append(file_info[0])
             self.image_dict[name] = len(self.image_list)
             self.image_list.append(ImageData(color_path,intrinsic_path,
                                               depth_path,name))
@@ -116,6 +119,30 @@ class IndoorMapping():
             elif(not self.run_with_threads):
                 print("computed {} images".format(thread_count))
         return True
+
+    def compute_image_poses(self):
+        '''
+        creates groups and runs computations on those groups to find the relative
+        camera orientations of all cameras in that group. done so by finding
+        image correspondances, RANSAC and 5 point to determine translations, and
+        bundle adjustment to refine the inital guesses provided by previous methods
+        '''
+        #for each hash
+        for img_hash in self.hash_list:
+            temp = []
+            temp.append(img_hash + "_x0_0")
+            temp.append(img_hash + "_x1_0")
+            temp.append(img_hash + "_x2_0")
+            #compile a group of 3 images (for now)
+            index_list = []
+            for name in temp:
+                index_list.append(self.image_list[self.image_dict[name]])
+
+            imGroup = ImageGroup(self.image_list)
+            imGroup.compute()
+            imGroup.debug()
+            break
+
 
     def terminal_debugger(self):
         print("""

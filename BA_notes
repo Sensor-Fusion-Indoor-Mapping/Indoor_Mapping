@@ -1,0 +1,85 @@
+Notes on the implimentation of BA in this system.
+
+The goal of the this project is to perfrom BA on RGB-D data, thus our cost
+function must be designed to include this data. This is an approach that
+extends normal BA because the inclusion of depth data allows us to remove scale
+ambuguity in our reprojections.  
+
+Some Math Notes:
+
+overall error function:
+  
+  error( {P_j}_j=0^Nc, {Q_i}_i=0^Np ) = error_depth + error_slam 
+  minimize this error with LM algorithm. (scipy.optimize.least_squares(...))
+
+
+Slam Error:
+  this error is the difference between estimated projection of a point Q_i
+  through the camera P_j and its corresponding obs q_ij
+
+  to maintain time efficiency the Nc parameter inicates the number of cameras
+  to be estimated and Np indicates the number of 3D points observed in those
+  latest images
+
+  error_slam({Pj}... , {Qi}...) = sigma(Np, i=0) sigma(j E A_i) 
+                                 rho_s(q_ij - pi(K * Pj * Qi), a_s)
+
+  Qi = d * K^-1 * q
+  Ai is the set of keyframe indices observing Qi -> camera poses with matches
+  i suppose
+  rho_s(...,a_s) is the Geman-McClure estimator
+  a_s is the rejection threshold, estimate with MAD median abs deviation
+
+  pi(K*Pj*Qi) is the perspective projection of K*P_j*Q_i
+    perspective proj is like pi(q) = (x/z, y/z).T
+
+
+  semantic breakdown:
+    for i in list of points
+      for j in A:
+        calculate Geman-McClure estimator of:
+          2D homogeneous point ij minus the perspective projection of
+          (K*P_j*Q_i)
+
+
+Depth Error:
+  to integrate depth error into the bundle adjustment system we create an
+  additional error function. using the following equations the 3D positions of features   are computed such that for each frame 'k' and it's obs q_ik, and its assosiated depth   measurement d_ik:
+
+  pi^-1 (q_ik, d_ik) = d_ik * K^-1 * q_ik
+
+  K is the intrinsic parameters of the camera
+
+  Q_ik is the homogeneous 3D point wrt the world frame
+
+  Q_ik = P_k^-1 * pi^-1 (q_ik, d_ik)
+
+  P_k is the transformation matrix from world coordinates to camera coords for
+  a camera frame 'k'
+
+  
+  The depth error is calculated by measuring the 2D projection error of each 3D
+  point Q_ij in each frame that observes this point ( j E A_i and j != k)
+
+  error_depth({Pj}) = sigma(Np,i=0) * sigma(j E A_i) * sigma(j != k, k E A_i) 
+                      rho_d( q_ij - pi(K * P_j * P_k^-1 * pi^-1(q_ik, d_ik)),
+                      a_d)
+
+  semantic breakdown: 
+    for i in list of points:
+      for j in A:
+        for k in A where k is not j:
+          calculate the Geman-McClure estimator of:
+            the 2D projection error of each 3D point Q_ij in each observing
+            frame
+
+
+Geman McClure estimator is of the type M-estimator
+  some function that minimizes the impact of outlyiers in the dataset
+
+Implimentation notes based on this reading:
+  graph builder -> compute matches of some N points and store kp info
+  graph computer -> perform BA on a graph in accordance to the given error
+  functions
+
+  first step is the two image example though...

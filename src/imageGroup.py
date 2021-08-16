@@ -53,7 +53,7 @@ class ImageGroup(object):
         if F.shape != (3,3):
             return np.eye(3), np.array([])
 
-        inlyers = np.vstack((inlyersA,inlyersB))
+        inlyers = np.asarray((inlyersA,inlyersB))
 
 
         #get intrinsic data from imgs
@@ -72,6 +72,10 @@ class ImageGroup(object):
         print(E)
         return E, inlyers
 
+    def compute_BA(self, P1, P2, imA, imB, inlyers):
+        prevP1 = P1
+        prevP2 = P2
+
     def compute_pose(self, E, inlyers):
         """
         takes previously calculated essential matrix and attempts to reconstruct
@@ -82,8 +86,8 @@ class ImageGroup(object):
         x = P * x'
         """
         #compute normalized inlyer points
-        points1n, T1 = structure.scale_and_translate_points(inlyers[:3])
-        points2n, T2 = structure.scale_and_translate_points(inlyers[3:])
+        points1n, T1 = structure.scale_and_translate_points(inlyers[0])
+        points2n, T2 = structure.scale_and_translate_points(inlyers[1])
 
         #compute P2 from cands
         P2_cand = structure.compute_P_from_essential(E)
@@ -121,7 +125,8 @@ class ImageGroup(object):
             if(len(P2.shape) != 2):
                 print("ERROR generating p2")
                 continue
-            self.trangulate_points(P2, inlyers)
+            self.compute_BA()
+            return
             print("NEXT IMAGES +++++++++++++++")
     def debug(self):
         pass

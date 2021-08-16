@@ -34,6 +34,7 @@ class ImageData(object):
         #computed data
         self.kp_cv = None
         self.des_cv = None
+        self.dpth_kp = None
 
     def open_images(self) -> bool:
         success = True
@@ -83,7 +84,6 @@ class ImageData(object):
         success = True
         sift = cv2.SIFT_create()
         self.kp_cv, self.des_cv = sift.detectAndCompute(self.undistorted_rgb_image,None)
-        #TODO improve kp with depth
         return success
 
 

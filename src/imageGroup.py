@@ -124,11 +124,14 @@ class ImageGroup(object):
                 continue
 
             # bundle adjustment
-            D_points = np.array([])
+            d1, d2 = kpProcessor.match_depth(inlyers[0].T,self.imageList[i].undistorted_dpth_image,
+                                    inlyers[1].T,self.imageList[i+1].undistorted_dpth_image)
+
+            D_points = np.vstack([d1,d2])
+            print(D_points[0])
             P1 = np.hstack((np.identity(3),np.zeros((3,1))))
             K1 = self.imageList[i].intrinsic
             K2 = self.imageList[i+1].intrinsic
-
             bundleAdjustment.bundle_adjust(P1,P2,K1,K2,inlyers,D_points)
 
 

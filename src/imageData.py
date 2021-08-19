@@ -41,7 +41,7 @@ class ImageData(object):
         self.distorted_rgb_image = cv2.imread(self.im_path,cv2.IMREAD_GRAYSCALE)
         if self.distorted_rgb_image is None:
             return False
-        self.distorted_dpth_image = cv2.imread(self.dpth_path)
+        self.distorted_dpth_image = cv2.imread(self.dpth_path,cv2.IMREAD_GRAYSCALE)
         if self.distorted_dpth_image is None:
             return False
         return success

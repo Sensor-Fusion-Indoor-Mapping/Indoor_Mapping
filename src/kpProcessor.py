@@ -21,8 +21,8 @@ def match_sift_points(desA,kpA,desB,kpB):
     return src_pts.T, des_pts.T
 
 def match_depth(kpA,depth_imageA,kpB,depth_imageB):
-    get_depth = lambda pnt : depth_imageA[int(pnt[1]), int(pnt[0])]
+    get_depth = lambda pnt : depth_imageA[int(pnt[1]), int(pnt[0])]/255
     src_dpth = np.asarray([get_depth(pnt) for pnt in kpA])
-    get_depth = lambda pnt : depth_imageB[int(pnt[1]), int(pnt[0])]
+    get_depth = lambda pnt : depth_imageB[int(pnt[1]), int(pnt[0])]/255
     des_dpth = np.asarray([get_depth(pnt) for pnt in kpB])
     return src_dpth, des_dpth

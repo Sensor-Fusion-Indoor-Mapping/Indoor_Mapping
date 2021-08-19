@@ -42,22 +42,26 @@ def bundle_adjust(P1,P2,K1,K2,RGB_points,D_points):
     RGB = (img,3,n)
     D = (img,1,n)
     """
+    Intrinsics = np.asarray([K1,K2])
     #RGB_adjust = RGB_points
     #D_adjust = D_points
     print(D_points.shape)
-    print(RGB_points.shape)
     px, py = 0,0
 
+    x = pack_data(camera_poses,RGB_points,D_points)
+    unpack_data(x,camera_poses.shape,RGB_points.shape,D_points.shape)
+
+
     #compute initial error
-    error = compute_error(pose_list,RGB_points,D_points, px, py, obs_indx, obs_val)
+    error = compute_err_slam(pose_list,RGB_points,D_points,Intrinsics, RGB_points)
     error_func = lambda x : 2*np.sqrt(np.sum(np.power(x,2)) / x.shape[0])
     print("initial error {}".format(error_func(error)))
     #least squares
-    func = lambda x : wrapper_func(x, cam_num, px, py, obs_indx, obs_val)
-    sol = least_squares(func,pack_data(pose_list,RGB_points,D_points), method="lm",max_nfev=1000)
+    func = lambda x : wrapper_func(x,Intrinsics,RGB_points,camera_poses.shape,RGB_points.shape,D_points.shape)
+    sol = least_squares(func,pack_data(camera_poses,RGB_points,D_points), method="lm",max_nfev=1000)
     #compute final error
-    print("final error {}".format(error_func(sol.fun)))
     print("final data points {}".format(sol.x))
+    print("final error {}".format(error_func(sol.fun)))
 
 def compute_error(pose_list,RGB_points,D_points,px,py,obs_indx,obs_val):
     '''
@@ -69,8 +73,33 @@ def compute_error(pose_list,RGB_points,D_points,px,py,obs_indx,obs_val):
     err += compute_err_depth(err)
     return err
 
-def compute_err_slam():
-    pass
+def compute_err_slam(camera_poses, RGB_points, D_points, Intrinsics, observed_RGB):
+    # points from camera A are 'world coordinates'
+    # for each camera frame, project points into frame of other camera
+    observed_error = np.zeros((0,3))
+    for i in range(camera_poses.shape[0]):
+        # get points and project onto opposite cam frame
+        # each point is then compared to position of measured points in the
+        # original system
+        #for i onto !i points
+        print(RGB_points[0])
+        for x in range(camera_poses.shape[0]):
+            if x!=i:
+                pose = np.zeros((3,4))
+                pose[:,0:3] = AngleAxis2RotationMatrix(camera_poses[i,:,0])
+                pose[:,3] = camera_poses[i,:,1]
+                for n in range(RGB_points.shape[2]):
+                    Q_i = np.hstack([np.dot(D_points[x,n],np.dot(np.linalg.inv(Intrinsics[x]),RGB_points[x,:,n])),1])
+                    projected_2D_pnt = np.dot(Intrinsics[i],np.dot(pose,Q_i))
+                    pi_pnt = projected_2D_pnt/projected_2D_pnt[2]
+                    if not np.isnan(np.sum(pi_pnt)):
+                        observed_error = np.vstack([observed_error,observed_RGB[i,:,n] - pi_pnt])
+
+        return observed_error.flatten()
+
+def wrapper_func(x,Intrinsics,obs,pose_s,rgb_s,d_s):
+    pose, rgb, d = unpack_data(x,pose_s,rgb_s,d_s)
+    return compute_err_slam(pose,rgb,d,Intrinsics,obs)
 
 def compute_err_depth(err):
     return np.array([0])

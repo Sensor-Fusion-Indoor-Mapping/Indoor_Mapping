@@ -2,6 +2,7 @@ import numpy as np
 import kpProcessor
 import structure
 import processor
+import bundleAdjustment
 
 class ImageGroup(object):
     def __init__(self, imageList):
@@ -72,10 +73,6 @@ class ImageGroup(object):
         print(E)
         return E, inlyers
 
-    def compute_BA(self, P1, P2, imA, imB, inlyers):
-        prevP1 = P1
-        prevP2 = P2
-
     def compute_pose(self, E, inlyers):
         """
         takes previously calculated essential matrix and attempts to reconstruct
@@ -125,7 +122,16 @@ class ImageGroup(object):
             if(len(P2.shape) != 2):
                 print("ERROR generating p2")
                 continue
-            self.compute_BA()
+
+            # bundle adjustment
+            D_points = np.array([])
+            P1 = np.hstack((np.identity(3),np.zeros((3,1))))
+            K1 = self.imageList[i].intrinsic
+            K2 = self.imageList[i+1].intrinsic
+
+            bundleAdjustment.bundle_adjust(P1,P2,K1,K2,inlyers,D_points)
+
+
             return
             print("NEXT IMAGES +++++++++++++++")
     def debug(self):

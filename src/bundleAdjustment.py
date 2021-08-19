@@ -22,7 +22,7 @@ def bundle_adjust(P1,P2,K1,K2,RGB_points,D_points):
     """
     cam_num = 2
     #format inital guesses
-    camera_poses = np.zeros((3,2,cam_num))
+    camera_poses = np.zeros((cam_num,3,2))
     pose_list = np.asarray([P1,P2])
     """
     looks like
@@ -32,10 +32,9 @@ def bundle_adjust(P1,P2,K1,K2,RGB_points,D_points):
     |rz z|
     ------
     """
-    print(pose_list.shape)
     for i in range(cam_num):
-        camera_poses[:,0,0] = rotationMatrix2angleaxis(pose_list[i,:,0:3])
-        camera_poses[:,1,0] = pose_list[i,:,3]
+        camera_poses[i,:,0] = rotationMatrix2angleaxis(pose_list[i,:,0:3])
+        camera_poses[i,:,1] = pose_list[i,:,3]
 
     #point list
     """
@@ -43,15 +42,38 @@ def bundle_adjust(P1,P2,K1,K2,RGB_points,D_points):
     RGB = (img,3,n)
     D = (img,1,n)
     """
-    RGB_adjust = RGB_points
-    D_adjust = D_points
-    px, py, = 0,0
+    #RGB_adjust = RGB_points
+    #D_adjust = D_points
+    print(D_points.shape)
+    print(RGB_points.shape)
+    px, py = 0,0
 
     #compute initial error
-
+    error = compute_error(pose_list,RGB_points,D_points, px, py, obs_indx, obs_val)
+    error_func = lambda x : 2*np.sqrt(np.sum(np.power(x,2)) / x.shape[0])
+    print("initial error {}".format(error_func(error)))
     #least squares
-
+    func = lambda x : wrapper_func(x, cam_num, px, py, obs_indx, obs_val)
+    sol = least_squares(func,pack_data(pose_list,RGB_points,D_points), method="lm",max_nfev=1000)
     #compute final error
+    print("final error {}".format(error_func(sol.fun)))
+    print("final data points {}".format(sol.x))
+
+def compute_error(pose_list,RGB_points,D_points,px,py,obs_indx,obs_val):
+    '''
+    least squares attempts to minimize the vector output by this function
+    our error function is two fold, one part computes the usual 2D reprojection error of each point
+    the second error function computes the 2D reprojection error of each 3D poin in the camera frame
+    '''
+    err = compute_err_slam(pose_list,RGB_points,D_points,px,py,obs_indx,obs_val)
+    err += compute_err_depth(err)
+    return err
+
+def compute_err_slam():
+    pass
+
+def compute_err_depth(err):
+    return np.array([0])
 
 def pack_data(poses,rgb,d):
     """

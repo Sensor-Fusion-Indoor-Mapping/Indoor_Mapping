@@ -111,28 +111,29 @@ class ImageGroup(object):
         P2 = P2_cand[indx]
         return P2
 
-    def compute(self):
-        for i in range(len(self.imageList)-2):
-            E, inlyers = self.compute_essential_and_inlyer(i,i+1)
+    def compute(self, i ,ii):
+        for z in range(len(self.imageList)-2):
+            E, inlyers = self.compute_essential_and_inlyer(i,ii)
             if(len(inlyers.shape) == 1):
                 print("error in compute essential, NEXT IMAGES +++++++++")
-                continue
+                return
             P2 = self.compute_pose(E, inlyers)
             print(P2)
             if(len(P2.shape) != 2):
                 print("ERROR generating p2")
-                continue
+                return
 
             # bundle adjustment
             d1, d2 = kpProcessor.match_depth(inlyers[0].T,self.imageList[i].undistorted_dpth_image,
-                                    inlyers[1].T,self.imageList[i+1].undistorted_dpth_image)
+                                    inlyers[1].T,self.imageList[ii].undistorted_dpth_image)
 
             D_points = np.vstack([d1,d2])
             print(D_points[0])
             P1 = np.hstack((np.identity(3),np.zeros((3,1))))
             K1 = self.imageList[i].intrinsic
-            K2 = self.imageList[i+1].intrinsic
-            bundleAdjustment.bundle_adjust(P1,P2,K1,K2,inlyers,D_points)
+            K2 = self.imageList[ii].intrinsic
+            print(P2,x,x+1)
+            #bundleAdjustment.bundle_adjust(P1,P2,K1,K2,inlyers,D_points)
 
 
             return

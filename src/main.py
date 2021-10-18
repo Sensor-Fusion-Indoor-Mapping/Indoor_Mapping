@@ -127,22 +127,14 @@ class IndoorMapping():
         image correspondances, RANSAC and 5 point to determine translations, and
         bundle adjustment to refine the inital guesses provided by previous methods
         '''
-        #for each hash
-        for img_hash in self.hash_list:
-            temp = []
-            temp.append(img_hash + "_x0_0")
-            temp.append(img_hash + "_x1_0")
-            temp.append(img_hash + "_x2_0")
-            #compile a group of 3 images (for now)
-            index_list = []
-            for name in temp:
-                index_list.append(self.image_list[self.image_dict[name]])
-
-            imGroup = ImageGroup(self.image_list)
-            imGroup.compute()
-            imGroup.debug()
-            break
-
+        for x in range(len(self.image_list)):
+            print(self.image_list[x].name,x)
+        imGroup = ImageGroup(self.image_list)
+        imGroup.compute(15,2)
+        imGroup.compute(2,15)
+        imGroup.compute(2,0)
+        imGroup.compute(0,15)
+        imGroup.debug()
 
     def terminal_debugger(self):
         print("""
@@ -170,7 +162,7 @@ class IndoorMapping():
             return False
         return True
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     imapp = IndoorMapping()
     imapp.set_arguments(sys.argv[1:])
     imapp.run()
